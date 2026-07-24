@@ -1,0 +1,6 @@
+# Team Architecture Rules
+
+1. Never access the database directly inside API route handlers.
+2. All database queries must go through repository classes in `/src/repositories`.
+3. Use strict Zod schemas for request body validation (put schemas in `/src/schemas`).
+4. Route handlers stay thin: parse → call repository → return response.
