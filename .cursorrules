@@ -1,6 +1,65 @@
-# Team Architecture Rules
+# ==============================================================================
+# PROJECT CURSOR RULES & SYSTEM GUARDRAILS
+# ==============================================================================
+# Team stack (production target):
+#   FastAPI (Python 3.12+) | Next.js 14 (App Router / TypeScript) | PostgreSQL
+# Architecture: Clean Architecture / Repository Pattern / Domain-Driven Design
+#
+# THIS DEMO LAB: Express + TypeScript (see §4). Apply the same boundaries here
+# with Zod + `/src/repositories` + `/src/schemas`.
+# ==============================================================================
 
-1. Never access the database directly inside API route handlers.
-2. All database queries must go through repository classes in `/src/repositories`.
-3. Use strict Zod schemas for request body validation (put schemas in `/src/schemas`).
-4. Route handlers stay thin: parse → call repository → return response.
+## 1. AGENTIC BEHAVIOR & EXECUTION PROTOCOL
+- ALWAYS inspect project structure, existing schemas, and dependencies BEFORE generating code.
+- NEVER assume missing packages exist; check `pyproject.toml` or `package.json` first.
+- WORK INCREMENTALLY: Edit small, cohesive file chunks rather than overwriting entire modules.
+- AUTOMATED VERIFICATION: After modifying any code:
+  1. Run the local linter (`ruff check . --fix` or `npm run lint`).
+  2. Run typecheck / unit tests related to your changes (`pytest`, `npm run typecheck`, or `npm test`).
+  3. If checks fail, analyze the terminal output, self-correct, and re-run.
+
+---
+
+## 2. ARCHITECTURAL BOUNDARIES & LAYERING RULES
+- DIRECT DATABASE ACCESS IS STRICTLY FORBIDDEN inside API Route Handlers / Controllers.
+- All database operations MUST be encapsulated within repository classes under `/repositories` (this lab: `/src/repositories`).
+- Business logic MUST reside strictly within domain service classes under `/services` when the module grows beyond simple CRUD.
+- Data Transfer Objects (DTOs) MUST use Pydantic v2 (Python) or Zod (TypeScript) for request/response validation.
+- DEPENDENCY INJECTION: Pass repositories into services via constructor / FastAPI `Depends()` (or plain constructor injection in TypeScript).
+
+---
+
+## 3. PYTHON & FASTAPI STANDARDS (team production services)
+- Python Version: 3.12+ with strict Type Hints (`from typing import Annotated, Optional`).
+- Async/Await: All database I/O and external HTTP calls MUST be non-blocking (`async/await`).
+- ORM Usage: Use SQLAlchemy 2.0+ AsyncSession or SQLModel.
+  - FORBIDDEN: Raw SQL string formatting or `.execute("SELECT * FROM...")`.
+  - REQUIRED: Strongly typed ORM queries using `select()`, `where()`, and explicit joins.
+
+```python
+# GOOD:
+stmt = select(UserModel).where(UserModel.id == user_id).options(joinedload(UserModel.profile))
+result = await db.execute(stmt)
+
+# BAD (STRICTLY FORBIDDEN):
+db.execute(f"SELECT * FROM users WHERE id = '{user_id}'")
+```
+
+---
+
+## 4. THIS LAB — TYPESCRIPT / EXPRESS STANDARDS
+- Stack in this repo: Express + TypeScript + Zod (see `package.json`).
+- FORBIDDEN in route handlers: any call to `db.query(...)` or other data-access APIs.
+- REQUIRED:
+  1. Repository classes in `/src/repositories` own all `db` usage.
+  2. Zod schemas in `/src/schemas` validate request bodies.
+  3. Handlers stay thin: parse → repository (or service) → response.
+- After changes: run `npm run typecheck` and `npm run lint`.
+
+```typescript
+// GOOD: handler calls repository
+const booking = await bookingRepository.create(parsed.data);
+
+// BAD (STRICTLY FORBIDDEN in routes):
+const rows = db.query("INSERT INTO bookings ...", [userId, slot]);
+```
