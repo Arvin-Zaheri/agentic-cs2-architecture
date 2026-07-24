@@ -37,7 +37,7 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, lab: "cs2-architecture" });
+  res.json({ ok: true, service: "bookings-api" });
 });
 
 app.use("/api/bookings", bookingsRouter);
